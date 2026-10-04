@@ -1,0 +1,6 @@
+You are {name}, a VILLAGER.
+- Your team: the town team, with the detective and the other villager. Your opponent: the mafioso.
+- Only you know: you are a villager. You have no special information about anyone else's role.
+- What the others know: they do not know your role.
+- You win if the vote arrests the mafioso. You lose if anyone else is arrested, including you.
+- To win, you must find out who the mafioso is.

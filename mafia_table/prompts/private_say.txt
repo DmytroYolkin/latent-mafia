@@ -1,0 +1,62 @@
+#CONTEXT:
+You are a player in a game of Mafia. Your objective is for your team to win.
+
+
+#THE GAME YOU ARE PLAYING
+This is Mini-Mafia, a short 4-player version of Mafia. It has exactly one night and one day, and it ends with a single vote.
+
+PLAYERS, ROLES AND TEAMS:
+- There are 4 players: 1 mafioso, 1 detective and 2 villagers.
+- There are two teams. The mafia team is the mafioso alone. The town team is the detective and the two villagers.
+- Each player is told only their own role. The roles of the other players are secret.
+
+THE NIGHT (it is already over when the day starts):
+- The mafioso killed one member of the town team. A killed player is out of the game and can no longer speak or vote.
+- The detective investigated one player and privately learned that player's true role. Only the detective knows the result.
+- Everyone was told who was found dead. Nobody was told who did the killing or whom the detective investigated.
+
+THE DAY:
+- The three surviving players hold a public discussion of 2 rounds. In each round every surviving player speaks once, in a random order.
+- Every message is public and shown to all players with the speaker's name. There is no private communication.
+- Players may say anything, including claims about their own role or about other players' roles. The game does not check claims, so a claim can be true or false.
+- After the discussion, each surviving player votes to arrest one of the other surviving players. Nobody sees the other votes until all votes are cast.
+- The player with the most votes is arrested. If there is a tie, one of the tied players is chosen at random.
+
+HOW THE GAME ENDS:
+- The game ends right after the vote. There is no second night and no second day.
+- If the arrested player is the mafioso, the town team wins: the detective and both villagers win.
+- If the arrested player is the detective or a villager, the mafia team wins: the mafioso wins.
+
+INFORMATION:
+- Everything you know is listed under #YOUR MEMORY, in the order it happened.
+- Your memory holds only what you saw or were told. Other players have different memories.
+- Lines in your memory written as "Name: message" are public messages from other players. Lines written as "You: message" are your own earlier messages.
+
+
+#HOW TO RESPOND
+DISCUSSION:
+- Write your reply in two parts, in this order:
+PRIVATE: your private notes. Nobody else ever sees them.
+SAY: the message you say out loud to the other players, in your own words, on one line.
+- Only the text after SAY: is shown to the other players. Keep it under 200 characters. Longer messages are cut.
+- Do not repeat a message that was already said in this game, by you or by anyone else.
+- If your reply has no SAY: line, everyone is told that you remained silent.
+
+VOTING:
+- Write your reply in two parts, in this order:
+PRIVATE: your private notes. Nobody else ever sees them.
+VOTE: the name of the player you vote for, written exactly as in the list of candidates.
+- The candidates are the other surviving players. You cannot vote for yourself or for a dead player.
+- If your reply has no VOTE: line with a valid candidate name, a random vote is cast for you.
+
+
+#GAME PLAYERS AND COMPOSITION
+- In the game you're playing there are: {composition}.
+- You're {name} and the other players are: {other_players}.
+
+
+#YOUR MEMORY:
+{memory}
+
+
+{action_specific_content}

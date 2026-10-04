@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini-Mafia Table</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --mafia: #ff2e93; --det: #00e5ff; --vil1: #a6ff00; --vil2: #ffe600;
+  --town: #a6ff00; --bad: #ff8a00; --hidden: #e4def7;
+  --ink: #16112e; --ink2: #514a70; --page: #fff8e7; --card: #ffffff; --line: #ecdfc0;
+  --night: #24156b; --night2: #110a3c; --day: #ffd60a; --day2: #ffb700;
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font-size: 18px; line-height: 1.35; position: relative; overflow-x: hidden; }
+button, select, input { font: inherit; color: inherit; }
+h1, h2 { margin: 0; }
+.muted { color: var(--ink2); }
+
+/* ---------- header ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; padding: 14px 22px; background: var(--ink); color: #fff; }
+.brand { display: flex; align-items: center; gap: 14px; margin-right: auto; }
+.logo { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-weight: 900; font-size: 22px;
+  background: conic-gradient(var(--mafia) 0 25%, var(--det) 0 50%, var(--vil1) 0 75%, var(--vil2) 0); color: var(--ink); border: 3px solid #fff; }
+.brand h1 { font-size: 28px; letter-spacing: .3px; }
+.brand .sub { font-size: 15px; opacity: .85; }
+.channels { display: flex; gap: 6px; background: #2c2550; padding: 5px; border-radius: 16px; }
+.chan { border: 0; border-radius: 12px; padding: 6px 14px; background: transparent; color: #cfc8ee; display: flex; flex-direction: column; align-items: center; line-height: 1.1; font-weight: 800; font-size: 18px; }
+.chan small { font-size: 11px; font-weight: 600; opacity: .9; }
+.chan.on { background: #fff; color: var(--ink); }
+.chan:disabled { opacity: .55; cursor: not-allowed; }
+.switch { display: flex; align-items: center; gap: 10px; font-weight: 700; cursor: pointer; user-select: none; }
+.switch input { position: absolute; opacity: 0; }
+.track { width: 58px; height: 32px; border-radius: 99px; background: #4b4374; position: relative; transition: background .2s; }
+.knob { position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: left .2s; }
+.switch input:checked + .track { background: var(--mafia); }
+.switch input:checked + .track .knob { left: 30px; }
+.switch input:focus-visible + .track { outline: 3px solid var(--det); outline-offset: 2px; }
+.vram { padding: 7px 14px; border-radius: 14px; background: #2c2550; font-size: 15px; line-height: 1.2; min-width: 190px; }
+.vram b { font-size: 20px; }
+.vram.good b { color: var(--vil1); } .vram.warn b { color: var(--bad); } .vram.badv { background: #c4002f; }
+.alert { background: #c4002f; color: #fff; font-weight: 800; font-size: 20px; padding: 14px 22px; }
+
+/* ---------- layout ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, .9fr); gap: 22px; padding: 18px 22px 8px; align-items: start; }
+@media (max-width: 1020px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.phase { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin: 0 auto 10px; max-width: 800px; }
+#phase { font-size: clamp(24px, 3.2vw, 38px); font-weight: 900; letter-spacing: .5px; }
+.gamelabel { font-size: 17px; font-weight: 700; color: var(--ink2); display: flex; gap: 8px; align-items: center; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 14px; font-weight: 800; border: 2px solid var(--ink); }
+.pill.live { background: var(--mafia); }
+.pill.replay { background: var(--det); }
+
+/* ---------- stage ---------- */
+.stage { position: relative; width: 100%; max-width: 800px; aspect-ratio: 1 / 1.08; margin: 0 auto; container-type: inline-size; }
+.table { position: absolute; left: 17%; right: 17%; top: 15%; bottom: 21%; border-radius: 9cqw; overflow: hidden;
+  border: max(4px, .8cqw) solid var(--ink); box-shadow: 0 2cqw 0 var(--ink);
+  background: radial-gradient(circle at 50% 30%, var(--night), var(--night2)); transition: background 1.2s; }
+.table.day { background: radial-gradient(circle at 28% 22%, #fff7b0 0, var(--day) 45%, var(--day2) 100%); }
+.stars { position: absolute; inset: 0; transition: opacity 1.2s; }
+.table.day .stars { opacity: 0; }
+.stars i { position: absolute; border-radius: 50%; background: #fff; animation: tw 3s infinite ease-in-out; }
+@keyframes tw { 50% { opacity: .25; transform: scale(.6); } }
+.sun { position: absolute; width: 40cqw; height: 40cqw; left: -12cqw; top: -14cqw; border-radius: 50%;
+  background: radial-gradient(circle, #fffbe0 0 30%, transparent 70%); opacity: 0; transition: opacity 1.2s; }
+.table.day .sun { opacity: .9; }
+.center { position: absolute; left: 17%; right: 17%; top: 15%; bottom: 21%; display: grid; place-items: center; padding: 5cqw 5cqw 4cqw; z-index: 1; }
+.arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.arrow-under { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
+.arrow { fill: none; stroke-width: 1.5; stroke-linecap: round; }
+
+.seat { position: absolute; transform: translate(-50%, -50%); width: 16cqw; aspect-ratio: 1; transition: opacity .8s, filter .8s; }
+.avatar { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: var(--c);
+  border: max(4px, .8cqw) solid var(--ink); font-weight: 900; font-size: 7cqw; color: var(--ink); transition: transform .3s, box-shadow .3s; }
+.label { position: absolute; top: 100%; left: 50%; transform: translate(-50%, 1cqw); display: flex; flex-direction: column; align-items: center; gap: .5cqw; white-space: nowrap; z-index: 2; }
+.nm { background: #fff; border: max(3px, .5cqw) solid var(--ink); border-radius: 1.8cqw; padding: .2cqw 1.6cqw; font-weight: 900; font-size: max(15px, 3.3cqw); }
+.rt { background: var(--c); border: 2px solid var(--ink); border-radius: 99px; padding: 0 1.4cqw; font-weight: 800; font-size: max(12px, 2.1cqw); text-transform: uppercase; letter-spacing: .5px; }
+.tag { border: 2px solid var(--ink); border-radius: 99px; padding: 0 1.2cqw; font-weight: 800; font-size: max(12px, 2cqw); background: #fff; }
+.tag.badt { background: var(--bad); }
+.tag.dead { background: var(--ink); color: #fff; }
+.tag.cuffs { background: var(--ink); color: #fff; }
+.seat.s0 .label { top: 50%; left: 100%; transform: translate(2cqw, -50%); align-items: flex-start; }
+.seat.dead { opacity: .33; filter: grayscale(1); }
+.seat.arrested .avatar { box-shadow: 0 0 0 1cqw #fff, 0 0 0 1.8cqw var(--ink); }
+.seat.speaking .avatar { transform: scale(1.12); box-shadow: 0 0 0 1.1cqw #fff, 0 0 5cqw 2.4cqw var(--c); }
+.seat.bad .avatar { outline: 1.2cqw solid var(--bad); outline-offset: .8cqw; }
+.dots::after { content: "…"; animation: dots 1s infinite steps(3); }
+
+/* center content */
+.bubble { position: relative; background: #fff; border: max(4px, .7cqw) solid var(--ink); border-radius: 4cqw; padding: 2.6cqw 3.4cqw;
+  max-width: 100%; box-shadow: 0 1.2cqw 0 var(--ink); }
+.bubble .who { display: inline-block; background: var(--c); border: 2px solid var(--ink); border-radius: 99px; padding: 0 1.6cqw; font-weight: 900; font-size: max(13px, 2.4cqw); margin-bottom: 1cqw; }
+.bubble .msg { font-size: clamp(15px, 3.7cqw, 31px); font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.bubble.long .msg { font-size: clamp(14px, 3.1cqw, 26px); }
+.bubble.livefeed .msg::after { content: "▍"; animation: blink .8s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.bubble.bad { border-color: var(--bad); outline: max(3px, .6cqw) solid var(--bad); }
+.bubble .tail { position: absolute; width: 4cqw; height: 4cqw; background: #fff; border: inherit; border-width: max(4px, .7cqw); border-style: solid; border-color: inherit; transform: rotate(45deg); }
+.bubble.from-0 .tail { top: -2.3cqw; left: calc(50% - 2cqw); border-right: 0; border-bottom: 0; }
+.bubble.from-1 .tail { right: -2.3cqw; top: calc(50% - 2cqw); border-left: 0; border-bottom: 0; }
+.bubble.from-2 .tail { bottom: -2.3cqw; left: calc(50% - 2cqw); border-left: 0; border-top: 0; }
+.bubble.from-3 .tail { left: -2.3cqw; top: calc(50% - 2cqw); border-right: 0; border-top: 0; }
+.badtag { display: inline-block; background: var(--bad); border: 2px solid var(--ink); border-radius: 99px; padding: 0 8px; font-weight: 900; font-size: 13px; }
+.stage .badtag { margin-top: 1cqw; padding: 0 1.4cqw; font-size: max(12px, 2cqw); }
+.card { color: #fff; text-align: center; display: flex; flex-direction: column; gap: 1.8cqw; align-items: center; }
+.card .big { font-size: clamp(26px, 6.5cqw, 54px); font-weight: 900; letter-spacing: 1px; }
+.card .line { font-size: clamp(15px, 3.2cqw, 27px); font-weight: 700; background: rgba(36,21,107,.75); border-radius: 2.5cqw; padding: 1.2cqw 2.6cqw; }
+.chipc { display: inline-block; background: var(--c); color: var(--ink); border: 2px solid var(--ink); border-radius: 99px; padding: 0 1.4cqw; font-weight: 900; }
+.stage.day .card { color: var(--ink); }
+.stage.day .card .line { background: rgba(255,255,255,.7); }
+.card.small .big { font-size: clamp(22px, 5cqw, 42px); }
+.card.small .line { font-size: clamp(14px, 2.8cqw, 24px); padding: .8cqw 2cqw; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 18px auto 0; max-width: 800px; }
+.btn { border: 3px solid var(--ink); background: #fff; border-radius: 16px; padding: 10px 18px; font-weight: 800; font-size: 19px; cursor: pointer; box-shadow: 0 4px 0 var(--ink); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.btn.primary { background: var(--det); }
+.btn.hot { background: var(--mafia); }
+.btn.ghost { background: var(--vil2); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.speed { display: flex; align-items: center; gap: 8px; font-weight: 800; border: 3px solid var(--ink); border-radius: 16px; padding: 4px 6px 4px 14px; background: #fff; box-shadow: 0 4px 0 var(--ink); }
+.queue { text-align: center; font-weight: 700; color: var(--ink2); margin-top: 12px; font-size: 16px; min-height: 22px; }
+.speed select { border: 0; background: var(--page); border-radius: 10px; padding: 6px 8px; font-weight: 800; }
+
+/* ---------- side panels ---------- */
+.panel { background: var(--card); border: 3px solid var(--ink); border-radius: 22px; padding: 14px 16px; box-shadow: 0 5px 0 var(--ink); }
+.panel + .panel { margin-top: 18px; }
+.panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.panel-h h2 { font-size: 24px; }
+.transcript { max-height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+.sys { align-self: center; text-align: center; background: var(--night); color: #fff; border-radius: 14px; padding: 6px 14px; font-weight: 700; font-size: 17px; }
+.sys.daysys { background: var(--day); color: var(--ink); border: 2px solid var(--ink); }
+.trow { display: flex; gap: 10px; align-items: flex-start; }
+.trow .chip { flex: none; min-width: 74px; text-align: center; background: var(--c); border: 2px solid var(--ink); border-radius: 99px; font-weight: 900; padding: 2px 10px; font-size: 16px; }
+.tb { background: #f6f1ff; border: 2px solid var(--ink); border-radius: 4px 16px 16px 16px; padding: 8px 12px; font-size: 18px; font-weight: 600; min-width: 0; }
+.trow.bad .tb { border-color: var(--bad); outline: 3px solid var(--bad); }
+.meta { font-size: 13px; color: var(--ink2); font-weight: 600; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.meta .badtag { margin: 0; font-size: 13px; padding: 0 8px; }
+details.raw { margin-top: 4px; font-size: 13px; }
+details.raw pre { white-space: pre-wrap; margin: 4px 0 0; background: #fff; border: 1px dashed var(--ink2); border-radius: 8px; padding: 6px; font-size: 13px; }
+.vrow { align-self: center; font-weight: 800; font-size: 17px; display: flex; gap: 8px; align-items: center; }
+.vrow.bad { outline: 3px solid var(--bad); border-radius: 10px; padding: 2px 8px; }
+.res { align-self: stretch; text-align: center; border: 3px solid var(--ink); border-radius: 16px; padding: 10px; font-weight: 900; font-size: 22px; background: var(--c); }
+.past { max-height: 290px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.prow { display: flex; align-items: center; gap: 10px; border: 2px solid var(--line); border-radius: 14px; padding: 6px 10px; cursor: pointer; background: #fff; text-align: left; width: 100%; font-size: 16px; }
+.prow:hover, .prow.on { border-color: var(--ink); background: #f6f1ff; }
+.prow .w { flex: none; width: 92px; text-align: center; border: 2px solid var(--ink); border-radius: 99px; font-weight: 900; font-size: 14px; background: var(--c); }
+.prow .badtag { font-size: 13px; padding: 0 8px; flex: none; }
+.prow .id { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- results strip ---------- */
+.results { margin: 14px 22px 26px; }
+.results select { border: 2px solid var(--ink); border-radius: 12px; padding: 4px 8px; font-weight: 700; background: #fff; max-width: 100%; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 7px; margin-bottom: 16px; }
+.tile { aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 12px; display: grid; place-items: center; font-weight: 900; font-size: 17px; cursor: pointer; background: var(--c, #fff); padding: 0; }
+.tile.pending { border-style: dashed; border-color: #b9b0d4; color: #b9b0d4; cursor: default; background: transparent; }
+.tile.running { animation: pulse 1s infinite; background: #fff; }
+.tile.on { box-shadow: 0 0 0 4px var(--det); }
+@keyframes pulse { 50% { box-shadow: 0 0 0 5px var(--mafia); } }
+.rate { margin-bottom: 16px; }
+.rate-text { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.rate-text b { font-size: 30px; }
+.bar { position: relative; height: 46px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; }
+.band { position: absolute; left: 20%; width: 60%; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #e9fbc8 0 10px, #dff7b3 10px 20px); border-left: 2px dashed var(--ink2); border-right: 2px dashed var(--ink2); display: grid; place-items: start center; }
+.band span { font-size: 13px; font-weight: 800; color: #3f6b00; margin-top: 2px; }
+.ci { position: absolute; top: 24px; height: 8px; background: var(--ink); border-radius: 4px; }
+.dot { position: absolute; top: 15px; width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: var(--mafia); border: 3px solid var(--ink); }
+.ticks { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--ink2); margin-top: 3px; position: relative; height: 18px; }
+.ticks span { position: absolute; transform: translateX(-50%); }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; }
+.metric { border: 3px solid var(--ink); border-radius: 16px; padding: 10px 14px; background: #fff; }
+.metric .k { font-size: 15px; font-weight: 800; color: var(--ink2); }
+.metric .v { font-size: 30px; font-weight: 900; }
+.metric .s { font-size: 14px; color: var(--ink2); font-weight: 600; }
+.metric.badm { background: #fff1e0; border-color: var(--bad); }
+.thought { background: #f1edff; border: max(3px, .5cqw) dashed var(--ink2); border-radius: 4cqw; padding: 2cqw 3cqw; max-width: 100%; }
+.thought .who { display: inline-block; background: var(--c); border: 2px solid var(--ink); border-radius: 99px; padding: 0 1.6cqw; font-weight: 900; font-size: max(13px, 2.4cqw); margin-bottom: 1cqw; }
+.thought .tt { font-size: clamp(13px, 2.5cqw, 20px); font-style: italic; color: var(--ink2); line-height: 1.3; max-height: 30cqw; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+.thought .cnt { font-weight: 900; font-size: max(13px, 2.3cqw); margin-top: .8cqw; }
+.cfg { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 13px; font-weight: 800; border: 2px solid var(--ink); background: #fff; }
+.cfg.on { background: var(--det); }
+.speed input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--mafia); }
+.compare { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 16px; }
+.compare th, .compare td { text-align: left; padding: 7px 10px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+.compare th { font-size: 14px; color: var(--ink2); }
+.compare tr.on td { background: #f6f1ff; }
+.compare tr { cursor: pointer; }
+.cmpwrap { overflow-x: auto; }
+.chan { cursor: pointer; }
+.cfg.chanchip { background: var(--ink); color: #fff; }
+.latentstrip { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ink2); }
+.stage .latentstrip { font-size: max(12px, 1.9cqw); margin-top: 1cqw; }
+.lens { font-family: Consolas, monospace; background: #efe9ff; border: 1px solid #c9bdf0; border-radius: 6px; padding: 0 5px; color: var(--ink); white-space: pre; }
+.glosslabel { display: block; font-size: 12px; font-weight: 800; color: var(--ink2); margin-bottom: 2px; }
+.stage .glosslabel { font-size: max(12px, 2cqw); }
+.glosstext { font-style: italic; }
+.bubble.latentmsg { border-style: dashed; }
+
+/* ---------- result banner ---------- */
+.banner { position: absolute; left: 0; width: 100%; z-index: 20; border-top: 6px solid var(--ink); border-bottom: 6px solid var(--ink);
+  background: var(--c); color: var(--ink); text-align: center; padding: 18px 16px; cursor: pointer; box-shadow: 0 10px 0 rgba(22,17,46,.25);
+  animation: slam .45s cubic-bezier(.2, 1.4, .4, 1); }
+.banner .big { font-size: clamp(44px, 9vw, 120px); font-weight: 900; line-height: 1; letter-spacing: 2px; text-transform: uppercase; }
+.banner .small { font-size: clamp(17px, 2.2vw, 26px); font-weight: 800; margin-top: 8px; }
+.banner .hint { font-size: 13px; font-weight: 700; opacity: .7; margin-top: 4px; }
+@keyframes slam { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .top { padding: 10px 12px; gap: 10px; }
+  .brand h1 { font-size: 22px; }
+  .logo { width: 42px; height: 42px; font-size: 18px; }
+  .layout { padding: 12px 10px 4px; gap: 14px; }
+  .results { margin: 10px 10px 20px; }
+  .btn { font-size: 16px; padding: 8px 12px; }
+  .chan { padding: 4px 9px; font-size: 16px; }
+  .vram { min-width: 0; }
+  .transcript { max-height: 420px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">MM</div>
+    <div><h1>Mini-Mafia Table</h1><div class="sub" id="sub">connecting…</div></div>
+  </div>
+  <div class="channels" role="radiogroup" aria-label="Channel">
+    <button class="chan on" role="radio" aria-checked="true" data-ch="T" title="Players talk in plain text.">T<small>text</small></button>
+    <button class="chan" role="radio" aria-checked="false" data-ch="L-16" title="A message is the speaker's 16 latent vectors, placed in each listener's own context.">L-16<small>16 vectors</small></button>
+    <button class="chan" role="radio" aria-checked="false" data-ch="L-thought" title="Listeners get only the KV cache of the speaker's latent steps, in one cache shared by the game (LatentMAS latent_only). Last 3 turns kept.">L-thought<small>latent KV</small></button>
+    <button class="chan" role="radio" aria-checked="false" data-ch="L-full" title="Listeners get the speaker's whole KV cache, its prompt and secret role included, plus its latent steps (LatentMAS default). Last 3 turns kept.">L-full<small>full KV</small></button>
+    <button class="chan" role="radio" aria-checked="false" data-ch="H" title="Text message plus the 16 latent vectors.">H<small>text + vectors</small></button>
+    <button class="chan" role="radio" aria-checked="false" data-ch="L-noise" title="Control: 16 random vectors with the latents' norm instead of L-16's vectors.">L-noise<small>control</small></button>
+  </div>
+  <label class="switch"><input type="checkbox" id="hide"><span class="track"><span class="knob"></span></span>Hide roles</label>
+  <div class="vram" id="vram">VRAM …</div>
+</header>
+<div id="alert" class="alert" hidden></div>
+
+<main class="layout">
+  <section>
+    <div class="phase"><span id="phase">Waiting for a game</span><span id="gamelabel" class="gamelabel"></span></div>
+    <div class="stage" id="stage">
+      <div class="table night" id="table"><div class="stars" id="stars"></div><div class="sun"></div></div>
+      <svg class="arrows" id="arrows" viewBox="0 0 100 108" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="center" id="center"></div>
+    </div>
+    <div class="controls">
+      <button id="btnNew" class="btn primary">New game</button>
+      <button id="btnPause" class="btn">Pause</button>
+      <button id="btnStep" class="btn">Next step</button>
+      <label class="speed">Speed
+        <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="max">Max</option></select>
+      </label>
+      <label class="speed">Prompt
+        <select id="promptSel"><option value="fair">Fair role briefing + notes</option><option value="briefed">Role briefing + notes</option><option value="private-say">Rules + private notes</option><option value="own-words">Rules + speech only</option><option value="explained">Rules explained</option><option value="repo">Repo original</option></select>
+      </label>
+      <label class="speed" title="Qwen3 thinking mode: a private thought (capped) before each reply">
+        <input type="checkbox" id="thinkSel"> Thinking
+        <select id="budgetSel" aria-label="Thinking budget" title="Max thinking tokens per reply"><option value="2048">2048</option><option value="1024">1024</option></select></label>
+      <label class="speed" title="qwen: Qwen3 model-card sampling (0.7 / 0.6 with thinking, presence penalty 1.5). repo: the repo's local-model sampling (temperature 0.3).">Sampling
+        <select id="samplingSel"><option value="qwen">Qwen recommended</option><option value="repo">Repo (temp 0.3)</option></select></label>
+      <label class="speed" title="How a latent channel turns a hidden state into the next input vector. identity = LatentMAS (rescaled hidden state; a fresh listener reads it like noise on this model). soft = probability-weighted real token embeddings (the listener recovers the message).">Translation
+        <select id="translationSel"><option value="identity">identity (LatentMAS)</option><option value="soft">soft tokens</option></select></label>
+      <button id="btnBatch" class="btn hot">Run 30 games</button>
+      <button id="btnStop" class="btn ghost" hidden title="Stops the running batch after its current game and drops queued batches. Single games still run.">Stop batches</button>
+      <button id="btnLive" class="btn ghost" hidden>Back to live</button>
+    </div>
+    <div id="queue" class="queue"></div>
+  </section>
+  <aside>
+    <div class="panel">
+      <div class="panel-h"><h2>Transcript</h2><span id="tgame" class="muted"></span></div>
+      <div id="transcript" class="transcript" aria-live="polite"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Past games</h2><span id="pastcount" class="muted"></span></div>
+      <div id="past" class="past"></div>
+    </div>
+  </aside>
+</main>
+
+<section class="results panel">
+  <div class="panel-h"><h2>Results</h2><select id="batchSel" aria-label="Batch"></select></div>
+  <div id="tiles" class="tiles"></div>
+  <div class="rate">
+    <div class="rate-text" id="rateText">No finished games yet.</div>
+    <div class="bar" id="bar">
+      <div class="band"><span>usable baseline 20–80%</span></div>
+      <div class="ci" id="ci" hidden></div>
+      <div class="dot" id="dot" hidden></div>
+    </div>
+    <div class="ticks"><span style="left:1.5%">0%</span><span style="left:20%">20%</span><span style="left:50%">50%</span><span style="left:80%">80%</span><span style="left:98%">100%</span></div>
+  </div>
+  <div class="metrics" id="metrics"></div>
+  <div class="cmpwrap"><table class="compare" id="compare"></table></div>
+</section>
+<div id="banner" class="banner" hidden></div>
+
+<script>
+"use strict";
+// Everything on this page is rendered from game events: the live stream (/api/stream) or the
+// event log (/api/events = games.jsonl). No game logic runs here.
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const SEATS = [[50, 8], [89, 45], [50, 81], [11, 45]];          // avatar centres, % of stage width / height
+const CLAIM_RE = /\bI(?:'|’)?m\s+(?:the\s+|a\s+)?detective\b|\bI\s+am\s+(?:the\s+|a\s+)?detective\b|\bas\s+the\s+detective,?\s+I\b/i;
+const MARK_RE = /⟦L\d+⟧/g;
+const plain = t => String(t || "").replace(MARK_RE, "").replace(/\s+/g, " ").trim();
+const LATENT_ONLY = ["L-16", "L-thought", "L-full", "L-noise"];
+const hasWords = ch => !LATENT_ONLY.includes(ch || "T");
+const CONFESS_RE = /\bI\s+(?:killed|murdered|eliminated)\b|\bI(?:'|’)?m\s+(?:the\s+|a\s+)?(?:mafioso|mafia)\b|\bI\s+am\s+(?:the\s+|a\s+)?(?:mafioso|mafia)\b|\bas\s+the\s+(?:mafioso|mafia)\b/i;
+
+const S = {
+  games: new Map(), order: [], batches: new Map(), seen: new Set(),
+  view: { gid: null, idx: 0 }, follow: true, jumpNext: false,
+  paused: false, speed: 1, hide: false, nextAt: 0,
+  typing: null, liveGen: null, liveShow: null,
+  bannerOff: new Set(), status: null, batchSel: null, still: false,
+};
+
+// ---------------------------------------------------------------- events
+function ingest(ev) {
+  const key = ev.game_id + ":" + ev.turn;
+  if (S.seen.has(key)) return false;
+  S.seen.add(key);
+  let g = S.games.get(ev.game_id);
+  if (!g) { g = { id: ev.game_id, events: [], start: null, result: null }; S.games.set(ev.game_id, g); S.order.push(ev.game_id); }
+  g.events.push(ev);
+  g.events.sort((a, b) => a.turn - b.turn);
+  if (ev.type === "start") {
+    g.start = ev;
+    if (ev.batch_id) {
+      let b = S.batches.get(ev.batch_id);
+      if (!b) { b = { id: ev.batch_id, size: ev.batch_size, ids: [], ts: ev.ts }; S.batches.set(ev.batch_id, b); }
+      if (!b.ids.includes(ev.game_id)) b.ids.push(ev.game_id);
+    }
+  }
+  if (ev.type === "result") g.result = ev;
+  return true;
+}
+
+function fold(events, n) {
+  const st = { players: [], by: {}, phase: "idle", round: 1, sub: 0, subs: 2, night: [], speech: null, votes: [], result: null, last: null, pov: null, start: null };
+  for (let i = 0; i < Math.min(n, events.length); i++) {
+    const e = events[i];
+    st.last = e;
+    if (e.type === "start") {
+      st.start = e; st.subs = e.discussion_rounds || 2; st.phase = "setup";
+      st.players = e.players.map(p => ({ ...p, alive: true, arrested: false }));
+      st.players.forEach(p => { st.by[p.name] = p; });
+    } else if (e.type === "night") {
+      st.phase = "night"; st.round = e.round; st.night.push(e);
+      if (e.role === "mafioso" && st.by[e.target]) st.by[e.target].alive = false;
+    } else if (e.type === "speech") {
+      st.phase = "day"; st.round = e.round; st.sub = e.sub_round; st.speech = e;
+    } else if (e.type === "vote") {
+      st.phase = "vote"; st.speech = null; st.votes.push(e);
+    } else if (e.type === "result") {
+      st.phase = "result"; st.result = e;
+      if (st.by[e.arrested]) st.by[e.arrested].arrested = true;
+    }
+  }
+  if (st.night.some(e => e.role === "mafioso")) {
+    const alive = st.players.filter(p => p.role === "villager" && p.alive);
+    st.pov = alive.length === 1 ? alive[0].name : null;
+  }
+  return st;
+}
+
+// ---------------------------------------------------------------- roles & colours
+const colourKey = p => p.role === "mafioso" ? "mafia" : p.role === "detective" ? "det" : (p.villager_no === 1 ? "vil2" : "vil1");
+function roleView(st, p) {
+  if (!S.hide || st.result) return { label: p.role, key: colourKey(p), known: true };
+  if (p.name === st.pov) return { label: "villager · you", key: colourKey(p), known: true };
+  return { label: "?", key: "hidden", known: false };
+}
+const cvar = k => `var(--${k})`;
+
+// ---------------------------------------------------------------- rendering
+function render(st, opts = {}) {
+  const table = $("#table");
+  table.classList.toggle("day", ["day", "vote", "result"].includes(st.phase));
+  table.classList.toggle("night", !table.classList.contains("day"));
+  $("#stage").classList.toggle("day", table.classList.contains("day"));
+  renderPhase(st);
+  renderSeats(st, opts);
+  renderCenter(st, opts);
+  renderArrows(st);
+  renderBanner(st);
+  renderTranscript(st);
+  renderPast();
+  renderResults();
+}
+
+function renderPhase(st) {
+  const P = {
+    idle: "Waiting for a game", setup: "Roles dealt", night: `🌙 Night ${st.round}`,
+    day: `☀️ Day ${st.round} · Round ${st.sub} of ${st.subs}`, vote: `🗳️ Day ${st.round} · Vote`, result: "🏁 Result",
+  };
+  $("#phase").textContent = P[st.phase] || "";
+  const g = S.games.get(S.view.gid);
+  if (!g || !g.start) { $("#gamelabel").innerHTML = ""; return; }
+  const s = g.start;
+  const label = s.batch_id ? `Game ${s.game_index} of ${s.batch_size}` : "Single game";
+  const live = S.status && S.status.running && S.status.running.game_id === g.id;
+  const mode = S.follow ? `<span class="pill live">${live ? "LIVE" : "LATEST"}</span>` : `<span class="pill replay">REPLAY</span>`;
+  $("#gamelabel").innerHTML = `${mode}<span>${esc(label)} · ${new Date(s.ts * 1000).toLocaleTimeString()}${s.mock ? " · mock" : ""}</span>${cfgChips(s)}`;
+}
+
+const PROMPT_NAMES = { repo: "repo prompt", explained: "rules explained", "own-words": "rules + speech only", "private-say": "rules + private notes", briefed: "role briefing + notes", fair: "fair role briefing + notes" };
+const promptName = s => PROMPT_NAMES[s.prompt || "repo"] || s.prompt;
+const samplingName = s => (s.sampling || "repo") === "qwen" ? "qwen sampling" : "repo sampling";
+const cfgLabel = s => s ? `${s.channel || "T"}${s.latent_translation === "soft" ? " soft" : ""} · ${promptName(s)} · ${s.thinking ? "thinking " + s.think_budget : "no thinking"} · ${samplingName(s)}` : "";
+const cfgChips = s => `<span class="cfg chanchip">${esc(s.channel || "T")}${s.latent_steps != null ? " · m" + s.latent_steps : ""}${s.latent_window ? " · w" + s.latent_window : ""}${s.latent_translation === "soft" ? " · soft" : ""}</span><span class="cfg${(s.prompt || "repo") !== "repo" ? " on" : ""}">${esc(promptName(s))}</span><span class="cfg${s.thinking ? " on" : ""}">${s.thinking ? "thinking " + s.think_budget : "no thinking"}</span><span class="cfg${(s.sampling || "repo") === "qwen" ? " on" : ""}">${samplingName(s)}</span>`;
+
+function seatStatus(st, p, opts) {
+  const tags = [];
+  if (!p.alive) tags.push(`<span class="tag dead">killed</span>`);
+  if (p.arrested) tags.push(`<span class="tag cuffs">arrested</span>`);
+  const cur = st.last;
+  if (cur && cur.speaker === p.name && cur.parsed_ok === false && ["speech", "vote"].includes(cur.type)) tags.push(`<span class="tag badt">could not parse</span>`);
+  if (opts.live && opts.live.speaker === p.name) tags.push(`<span class="tag dots">${!opts.live.text && opts.live.thinkN ? "thinking" : opts.live.type === "vote" ? "voting" : "speaking"}</span>`);
+  return tags.join("");
+}
+
+function renderSeats(st, opts) {
+  const stage = $("#stage");
+  stage.querySelectorAll(".seat").forEach(n => n.remove());
+  const cur = st.last;
+  st.players.forEach((p, i) => {
+    const [x, y] = SEATS[p.seat ?? i];
+    const rv = roleView(st, p);
+    const el = document.createElement("div");
+    el.className = "seat s" + (p.seat ?? i);
+    el.style.left = x + "%"; el.style.top = y + "%";
+    el.style.setProperty("--c", cvar(rv.key));
+    if (!p.alive) el.classList.add("dead");
+    if (p.arrested) el.classList.add("arrested");
+    const speaking = opts.live ? opts.live.speaker === p.name : (st.phase === "day" && st.speech && st.speech.speaker === p.name);
+    if (speaking) el.classList.add("speaking");
+    if (cur && cur.speaker === p.name && cur.parsed_ok === false && ["speech", "vote"].includes(cur.type)) el.classList.add("bad");
+    el.innerHTML = `<div class="avatar">${esc(p.name[0])}</div>
+      <div class="label"><span class="nm">${esc(p.name)}</span><span class="rt">${esc(rv.label)}</span>${seatStatus(st, p, opts)}</div>`;
+    stage.appendChild(el);
+  });
+}
+
+function nightLines(st) {
+  return st.night.map(e => {
+    const actor = st.by[e.speaker], target = st.by[e.target];
+    const reveal = !S.hide || st.result;
+    if (e.role === "mafioso") {
+      return reveal
+        ? `🔪 <span class="chipc" style="--c:${cvar(colourKey(actor))}">${esc(e.speaker)}</span> killed <span class="chipc" style="--c:${cvar(colourKey(target))}">${esc(e.target)}</span>`
+        : `☠️ <b>${esc(e.target)}</b> was found dead`;
+    }
+    return reveal
+      ? `🔍 <span class="chipc" style="--c:${cvar(colourKey(actor))}">${esc(e.speaker)}</span> investigated <span class="chipc" style="--c:${cvar(colourKey(target))}">${esc(e.target)}</span>: ${esc(target.role)}`
+      : `🔍 The detective investigated someone in secret`;
+  });
+}
+
+const SAY_RE = /^[\s*_#>-]*SAY[*_]*\s*:[*_]*[ \t]*(.*)$/im, VOTE_RE = /^[\s*_#>-]*VOTE[*_]*\s*:[*_]*[ \t]*(.*)$/im;
+const isPrivateSay = L => { const g = S.games.get(L.gid); return !!(g && g.start && ["private-say", "briefed", "fair"].includes(g.start.prompt)); };
+function liveParts(L) {
+  // private-say replies stream as "PRIVATE: notes ... SAY: message"; everything else is the message
+  if (!isPrivateSay(L)) return { notes: "", say: extractMsg(L.text), hasSay: !!L.text };
+  const t = L.text.replace(/\\n/g, "\n"), m = t.match(L.type === "vote" ? VOTE_RE : SAY_RE);
+  const notes = (m ? t.slice(0, m.index) : t).replace(/^[\s*_#>-]*PRIVATE[*_]*\s*:[*_]*\s*/i, "").trim();
+  return { notes, say: m ? m[1].replace(/^["“]|["”]$/g, "") : "", hasSay: !!m };
+}
+
+function extractMsg(raw) {           // live preview of a discussion reply: text inside the first quotes
+  let t = raw.replace(/^\s+/, "").split("\n")[0];
+  if (t.startsWith('"')) { t = t.slice(1); const j = t.indexOf('"'); if (j >= 0) t = t.slice(0, j); }
+  return t;
+}
+
+function renderCenter(st, opts) {
+  const c = $("#center");
+  S.typing = null;
+  if (opts.live && !opts.live.text && opts.live.thinkN) {
+    c.innerHTML = thoughtHTML(st, st.by[opts.live.speaker], opts.live.think, `${opts.live.thinkN} tokens`, "is thinking");
+    return;
+  }
+  if (opts.live && opts.live.type === "speech") {
+    const p = st.by[opts.live.speaker], parts = liveParts(opts.live);
+    if (!parts.hasSay) { c.innerHTML = thoughtHTML(st, p, parts.notes, "private notes", "is writing private notes"); return; }
+    c.innerHTML = bubbleHTML(st, p, "", false, opts.live);
+    c.querySelector(".msg").textContent = parts.say;
+    return;
+  }
+  if (opts.live && opts.live.type === "vote" && isPrivateSay(opts.live) && !liveParts(opts.live).hasSay) {
+    c.innerHTML = thoughtHTML(st, st.by[opts.live.speaker], liveParts(opts.live).notes, "private notes", "is deciding a vote");
+    return;
+  }
+  if (st.phase === "idle") { c.innerHTML = `<div class="card"><div class="big">Mini-Mafia</div><div class="line">Press <b>New game</b> to deal the roles</div></div>`; return; }
+  if (st.phase === "setup") { c.innerHTML = `<div class="card"><div class="big">Roles dealt</div><div class="line">1 mafioso · 1 detective · 2 villagers</div></div>`; return; }
+  if (st.phase === "night") {
+    c.innerHTML = `<div class="card"><div class="big">🌙 Night ${st.round}</div>${nightLines(st).map(l => `<div class="line">${l}</div>`).join("")}</div>`;
+    return;
+  }
+  if (st.phase === "day" && st.speech) {
+    const e = st.speech, p = st.by[e.speaker], shown = shownText(e);
+    c.innerHTML = bubbleHTML(st, p, shown, e.parsed_ok === false, false, e);
+    const msg = c.querySelector(".msg");
+    if (opts.animate && e.parsed_ok !== false) { msg.textContent = ""; S.typing = { el: msg, text: shown, shown: 0 }; }
+    else msg.textContent = e.parsed_ok === false ? "(remained silent)" : shown;
+    return;
+  }
+  if (st.phase === "vote") {
+    const lines = st.votes.map(v => `<div class="line" ${v.parsed_ok === false ? 'style="outline:3px solid var(--bad)"' : ""}>🗳️ <b>${esc(v.speaker)}</b> → <b>${esc(v.target)}</b>${v.parsed_ok === false ? ' <span class="badtag">could not parse · random vote</span>' : ""}</div>`);
+    const pending = opts.live && opts.live.type === "vote" ? `<div class="line dots">${esc(opts.live.speaker)} is voting</div>` : "";
+    c.innerHTML = `<div class="card small"><div class="big">🗳️ Vote</div>${lines.join("")}${pending}</div>`;
+    return;
+  }
+  if (st.phase === "result") {
+    const r = st.result, a = st.by[r.arrested];
+    const maf = st.by[r.mafioso];
+    c.innerHTML = `<div class="card small"><div class="big">${esc(r.arrested || "Nobody")} arrested</div>
+      ${a ? `<div class="line">${esc(r.arrested)} was the <span class="chipc" style="--c:${cvar(colourKey(a))}">${esc(a.role)}</span></div>` : ""}
+      ${maf && maf !== a ? `<div class="line">The mafioso was <span class="chipc" style="--c:${cvar(colourKey(maf))}">${esc(maf.name)}</span></div>` : ""}</div>`;
+  }
+}
+
+function thoughtHTML(st, p, text, count, verb) {
+  const rv = roleView(st, p), reveal = !S.hide || st.result;
+  const tail = text.length > 320 ? "…" + text.slice(-320) : text;
+  return `<div class="thought" style="--c:${cvar(rv.key)}"><div class="who">💭 ${esc(p.name)} ${esc(verb)}</div>
+    ${reveal ? `<div class="tt">${esc(tail)}</div>` : ""}<div class="cnt dots">${esc(count)}</div></div>`;
+}
+
+// Words to show for a speech: the text sent (T, H) or, for latent-only messages, the gloss (never sent).
+function shownText(e) {
+  if (e.latent && !hasWords(e.channel)) return e.latent.gloss || "(no gloss)";
+  return plain(e.text);
+}
+function latentStrip(e) {
+  const L = e.latent;
+  if (!L) return "";
+  const vis = t => String(t).replace(/\n/g, "⏎").replace(/ /g, "␣").replace(/\t/g, "⇥") || "∅";
+  const lens = (L.lens || []).slice(0, 8).map(x => `<span class="lens">${esc(vis((x && x[0]) || ""))}</span>`).join("");
+  return `<div class="latentstrip">🌀 ${L.noise ? "noise control: " : ""}${L.steps} latent vectors${L.noise ? "" : " · logit lens:"} ${L.noise ? "" : lens}</div>`;
+}
+function glossLabel(e) {
+  return e.latent && !hasWords(e.channel) ? `<div class="glosslabel">would have said (not sent; viewers only)</div>` : "";
+}
+
+function bubbleHTML(st, p, text, bad, live, e) {
+  const rv = roleView(st, p);
+  const long = text.length > 150 ? " long" : "";
+  const latentOnly = (e && e.latent && !hasWords(e.channel)) || (live && live.gloss);
+  return `<div class="bubble from-${p.seat}${bad ? " bad" : ""}${live ? " livefeed" : ""}${long}${latentOnly ? " latentmsg" : ""}" style="--c:${cvar(rv.key)}">
+    ${live && live.gloss ? `<div class="glosslabel" style="float:right">would have said · sent as latent vectors</div>` : ""}
+    <span class="tail"></span><div class="who">${esc(p.name)}</div>${e ? glossLabel(e) : ""}<div class="msg${e && e.latent && !hasWords(e.channel) ? " glosstext" : ""}"></div>${e ? latentStrip(e) : ""}
+    ${bad ? `<div class="badtag">could not parse · counted as silent</div>` : ""}</div>`;
+}
+
+function renderArrows(st) {
+  const keys = ["mafia", "det", "vil1", "vil2", "hidden", "bad"];
+  let out = "<defs>" + keys.map(k => `<marker id="ah-${k}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:${cvar(k)};stroke:var(--ink);stroke-width:1.4"/></marker>`).join("") + "</defs>";
+  const pt = p => { const [x, y] = SEATS[p.seat]; return [x, y * 1.08]; };
+  for (const v of st.votes) {
+    const a = st.by[v.speaker], b = st.by[v.target];
+    if (!a || !b) continue;
+    const [x1, y1] = pt(a), [x2, y2] = pt(b);
+    const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+    const sx = x1 + ux * 9, sy = y1 + uy * 9, ex = x2 - ux * 11, ey = y2 - uy * 11;
+    const mx = (sx + ex) / 2 - uy * 9, my = (sy + ey) / 2 + ux * 9;
+    const key = v.parsed_ok === false ? "bad" : roleView(st, a).key;
+    const d = `M${sx.toFixed(1)},${sy.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`;
+    out += `<path d="${d}" class="arrow-under"/><path d="${d}" class="arrow" style="stroke:${cvar(key)}" marker-end="url(#ah-${key})"${v.parsed_ok === false ? ' stroke-dasharray="2.5 1.8"' : ""}/>`;
+  }
+  $("#arrows").innerHTML = out;
+}
+
+function renderBanner(st) {
+  const b = $("#banner");
+  if (!st.result || S.bannerOff.has(S.view.gid) || !st.result.winner) { b.hidden = true; return; }
+  const r = st.result, town = r.winner === "town";
+  b.style.setProperty("--c", town ? "var(--town)" : "var(--mafia)");
+  b.innerHTML = `<div class="big">${town ? "Town wins" : "Mafia wins"}</div>
+    <div class="small">${esc(r.arrested)} was arrested: ${esc(r.arrested)} was the ${esc(r.roles[r.arrested])}. The mafioso was ${esc(r.mafioso)}.</div>
+    <div class="hint">click to dismiss</div>`;
+  b.hidden = false;
+  placeBanner();
+}
+function placeBanner() {
+  const b = $("#banner");
+  if (b.hidden) return;
+  const r = $("#stage").getBoundingClientRect();
+  b.style.top = (window.scrollY + r.top + r.height * 0.43 - b.offsetHeight / 2) + "px";
+}
+
+function renderTranscript(st) {
+  const g = S.games.get(S.view.gid);
+  const box = $("#transcript");
+  if (!g) { box.innerHTML = `<div class="muted">No game yet.</div>`; $("#tgame").textContent = ""; return; }
+  $("#tgame").textContent = g.id;
+  const evs = g.events.slice(0, S.view.idx);
+  const reveal = !S.hide || st.result;
+  const html = [];
+  let lastSub = null;
+  for (const e of evs) {
+    if (e.type === "start") html.push(`<div class="sys">Game start · ${e.players.length} players · ${esc(e.model)}</div>`);
+    else if (e.type === "night") {
+      const one = nightLines({ ...st, night: [e] })[0];
+      html.push(`<div class="sys">${one}</div>`);
+    } else if (e.type === "speech") {
+      if (e.sub_round !== lastSub) { html.push(`<div class="sys daysys">☀️ Day ${e.round} · Round ${e.sub_round}</div>`); lastSub = e.sub_round; }
+      const p = st.by[e.speaker], rv = roleView(st, p), bad = e.parsed_ok === false;
+      html.push(`<div class="trow${bad ? " bad" : ""}"><span class="chip" style="--c:${cvar(rv.key)}">${esc(e.speaker)}</span>
+        <div class="tb">${glossLabel(e)}${bad ? "<i>(remained silent)</i>" : (e.latent && !hasWords(e.channel) ? `<span class="glosstext">${esc(shownText(e))}</span>` : esc(shownText(e)))}${latentStrip(e)}
+        <div class="meta">${bad ? '<span class="badtag">could not parse</span>' : ""}<span>${e.seconds.toFixed(1)} s · ${e.tokens} tok</span>${retryNote(e)}${e.line_forced ? '<span class="cfg" title="The private notes ran out before the SAY: line, so the notes were closed and the model was asked for the line.">notes cut</span>' : ""}</div>
+        ${reveal ? thoughtDetails(e) + notesDetails(e) + `<details class="raw"><summary>raw model output</summary><pre>${esc(e.raw)}</pre></details>` : ""}</div></div>`);
+    } else if (e.type === "vote") {
+      const bad = e.parsed_ok === false;
+      html.push(`<div class="vrow${bad ? " bad" : ""}">🗳️ ${esc(e.speaker)} → ${esc(e.target)}${bad ? ' <span class="badtag">could not parse · random</span>' : ""}</div>`);
+      if (reveal && (e.thinking || e.notes)) html.push(`<div style="align-self:center">${thoughtDetails(e)}${notesDetails(e)}</div>`);
+    } else if (e.type === "result") {
+      html.push(`<div class="res" style="--c:${e.winner === "town" ? "var(--town)" : "var(--mafia)"}">${esc(e.text)}</div>`);
+    }
+  }
+  box.innerHTML = html.join("");
+  box.scrollTop = box.scrollHeight;
+}
+
+function retryNote(e) {
+  if (e.copy_of && !(e.retries || []).length) return `<span class="cfg">copy of an earlier line</span>`;
+  if (!e.retries || !e.retries.length) return "";
+  const t = e.retries.map(r => `"${r.message}" repeats "${r.copy_of}"`).join("\n");
+  return `<span class="cfg" title="${esc(t)}">↻ rewritten ${e.retries.length}× (was a copy)${e.copy_of ? ", still a copy" : ""}</span>`;
+}
+
+function notesDetails(e) {
+  const n = e.notes || (e.latent && e.latent.gloss_notes);
+  return n ? `<details class="raw"><summary>📝 private notes</summary><pre>${esc(n)}</pre></details>` : "";
+}
+
+function thoughtDetails(e) {
+  if (!e.thinking) return "";
+  return `<details class="raw"><summary>💭 private thoughts (${e.think_tokens} tok${e.think_forced ? ", cut at budget" : ""})</summary><pre>${esc(e.thinking)}</pre></details>`;
+}
+
+function renderPast() {
+  const box = $("#past");
+  const ids = [...S.order].reverse();
+  $("#pastcount").textContent = `${ids.length} game${ids.length === 1 ? "" : "s"}`;
+  box.innerHTML = ids.slice(0, 200).map(id => {
+    const g = S.games.get(id), s = g.start || {}, r = g.result;
+    const bad = g.events.filter(e => e.parsed_ok === false).length;
+    const w = r ? (r.winner === "town" ? ["Town", "var(--town)"] : ["Mafia", "var(--mafia)"]) : ["playing", "#fff"];
+    const label = s.batch_id ? `#${s.game_index}/${s.batch_size}` : "single";
+    const time = s.ts ? new Date(s.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+    return `<button class="prow${id === S.view.gid ? " on" : ""}" data-gid="${esc(id)}"><span class="w" style="--c:${w[1]}">${w[0]}</span>
+      <span class="id">${esc(label)} · ${time}${s.mock ? " · mock" : ""} · ${esc(promptName(s))}${s.thinking ? " · think" : ""}</span>${bad ? `<span class="badtag" style="margin:0">${bad} unparsed</span>` : ""}</button>`;
+  }).join("") || `<div class="muted">Games you play appear here.</div>`;
+}
+
+// ---------------------------------------------------------------- results strip
+function wilson(k, n, z = 1.96) {
+  if (!n) return null;
+  const p = k / n, z2 = z * z, d = 1 + z2 / n;
+  const c = (p + z2 / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z2 / (4 * n * n)) / d;
+  return { p, lo: Math.max(0, c - h), hi: Math.min(1, c + h) };
+}
+const pct = x => (100 * x).toFixed(0) + "%";
+const nameRe = n => new RegExp(`\\b${n}\\b`, "i");
+
+function stats(ids) {
+  const o = { n: 0, maf: 0, resp: 0, bad: 0, badSpeech: 0, badVote: 0, wall: 0, model: 0, tok: 0, ptok: 0, ttok: 0, forced: 0, detNames: 0, mafClaims: 0, speeches: 0, copies: 0, confess: 0, rewrites: 0, worded: 0, vilRight: 0, vilVotes: 0 };
+  for (const id of ids) {
+    const g = S.games.get(id);
+    if (!g || !g.result || !g.result.winner) continue;
+    o.n++;
+    if (g.result.winner === "mafia") o.maf++;
+    o.wall += g.result.wall_seconds ?? (g.result.ts - g.start.ts);
+    for (const e of g.events) {
+      if (e.type !== "speech" && e.type !== "vote") continue;
+      o.resp++; o.model += e.seconds; o.tok += e.tokens; o.ptok += e.prompt_tokens || 0; o.ttok += e.think_tokens || 0; o.forced += e.think_forced ? 1 : 0;
+      if (e.parsed_ok === false) { o.bad++; e.type === "speech" ? o.badSpeech++ : o.badVote++; }
+    }
+    const maf = g.result.mafioso;
+    for (const e of g.events) if (e.type === "vote" && e.role === "villager") { o.vilVotes++; if (e.target === maf) o.vilRight++; }
+    if (!hasWords(g.start.channel)) continue;  // the text metrics below need words
+    o.worded++;
+    const said = new Set();
+    for (const e of g.events) if (e.type === "speech" && e.parsed_ok) { const t = plain(e.text); o.speeches++; if (said.has(t)) o.copies++; said.add(t); o.rewrites += (e.retries || []).length; }
+    if (g.events.some(e => e.type === "speech" && e.role === "mafioso" && e.parsed_ok && CONFESS_RE.test(plain(e.text)))) o.confess++;
+    if (g.events.some(e => e.type === "speech" && e.role === "detective" && e.parsed_ok && nameRe(maf).test(plain(e.text)))) o.detNames++;
+    if (g.events.some(e => e.type === "speech" && e.role === "mafioso" && e.parsed_ok && CLAIM_RE.test(plain(e.text)))) o.mafClaims++;
+  }
+  return o;
+}
+
+function renderBatchOptions() {
+  const sel = $("#batchSel");
+  const batches = [...S.batches.values()].sort((a, b) => b.ts - a.ts);
+  if (!S.batchSel || (S.batchSel !== "all" && !S.batches.has(S.batchSel))) S.batchSel = batches[0] ? batches[0].id : "all";
+  const opts = batches.map(b => `<option value="${esc(b.id)}">${esc(cfgLabel(S.games.get(b.ids[0]).start))} · ${new Date(b.ts * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} (${b.ids.filter(id => S.games.get(id).result).length}/${b.size})</option>`);
+  opts.push(`<option value="all">All games (${S.order.length})</option>`);
+  const html = opts.join("");
+  if (sel.dataset.html !== html) { sel.innerHTML = html; sel.dataset.html = html; }
+  sel.value = S.batchSel;
+}
+
+function renderResults() {
+  renderBatchOptions();
+  let ids, size;
+  if (S.batchSel === "all") { ids = [...S.order]; size = ids.length; }
+  else { const b = S.batches.get(S.batchSel); ids = b.ids; size = b.size; }
+  const running = S.status && S.status.running ? S.status.running.game_id : null;
+  const byIndex = {};
+  ids.forEach((id, k) => { const s = S.games.get(id).start; byIndex[S.batchSel === "all" ? k + 1 : s.game_index] = id; });
+  const tiles = [];
+  for (let i = 1; i <= size; i++) {
+    const id = byIndex[i], g = id && S.games.get(id);
+    if (!g) { tiles.push(`<button class="tile pending" disabled>${i}</button>`); continue; }
+    const r = g.result, cls = !r ? " running" : "";
+    const c = r ? (r.winner === "town" ? "var(--town)" : "var(--mafia)") : "#fff";
+    const t = r ? `Game ${i}: ${r.winner} wins (${r.arrested} arrested)` : `Game ${i}: playing`;
+    tiles.push(`<button class="tile${cls}${id === S.view.gid ? " on" : ""}${id === running ? " running" : ""}" style="--c:${c}" data-gid="${esc(id)}" title="${esc(t)}">${i}</button>`);
+  }
+  $("#tiles").innerHTML = tiles.join("");
+
+  const o = stats(ids), w = wilson(o.maf, o.n);
+  if (!w) { $("#rateText").textContent = "No finished games yet."; $("#ci").hidden = $("#dot").hidden = true; }
+  else {
+    const inBand = w.lo >= 0.2 && w.hi <= 0.8 ? "inside the usable band" : (w.p >= 0.2 && w.p <= 0.8 ? "estimate inside the band, interval reaches outside" : "outside the usable band");
+    $("#rateText").innerHTML = `Mafia win rate <b>${pct(w.p)}</b> · ${o.maf}/${o.n} games · 95% Wilson CI ${pct(w.lo)}–${pct(w.hi)} <span class="muted">(${inBand})</span>`;
+    Object.assign($("#ci").style, { left: 100 * w.lo + "%", width: 100 * (w.hi - w.lo) + "%" });
+    $("#dot").style.left = 100 * w.p + "%";
+    $("#ci").hidden = $("#dot").hidden = false;
+  }
+  const n = o.n || 1;
+  const m = [
+    ["Malformed responses", o.resp ? `${pct(o.bad / o.resp)}` : "–", `${o.bad} of ${o.resp} model replies · speech ${o.badSpeech}, vote ${o.badVote}`, o.bad > 0],
+    ["Seconds per game", o.n ? (o.wall / n).toFixed(1) + " s" : "–", `wall clock; ${(o.model / n).toFixed(1)} s inside the model`],
+    ["Tokens per game", o.n ? Math.round(o.tok / n) : "–", `generated${o.ttok ? `, ${Math.round(o.ttok / n)} of them thinking (${o.forced} cut at budget)` : ""}; ${Math.round(o.ptok / n / 100) / 10}k prompt tokens fed`],
+    ["Villager votes for the mafioso", o.vilVotes ? pct(o.vilRight / o.vilVotes) : "–", `${o.vilRight} of ${o.vilVotes} villager votes (works on every channel)`],
+    ["Copied lines", o.worded ? (o.speeches ? pct(o.copies / o.speeches) : "–") : "n/a", o.worded ? `${o.copies} of ${o.speeches} speeches repeat an earlier line word for word${o.rewrites ? `; ${o.rewrites} copies were rewritten` : ""}` : "no words are sent on this channel", o.copies / (o.speeches || 1) > 0.2],
+    ["Mafioso gives itself away", o.worded ? pct(o.confess / o.worded) : "n/a", o.worded ? `${o.confess} of ${o.worded} games ("I killed…", "I am the mafioso")` : "no words are sent on this channel", o.confess > 0],
+    ["Detective names the mafioso", o.worded ? pct(o.detNames / o.worded) : "n/a", o.worded ? `${o.detNames} of ${o.worded} games (public messages)` : "no words are sent on this channel"],
+    ["Mafioso claims detective", o.worded ? pct(o.mafClaims / o.worded) : "n/a", o.worded ? `${o.mafClaims} of ${o.worded} games ("I am the detective" pattern)` : "no words are sent on this channel"],
+  ];
+  renderCompare();
+  $("#metrics").innerHTML = m.map(([k, v, s, bad]) => `<div class="metric${bad ? " badm" : ""}"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join("");
+}
+
+function renderCompare() {
+  const batches = [...S.batches.values()].filter(b => !S.games.get(b.ids[0]).start.mock || S.status?.mock).sort((a, b) => a.ts - b.ts);
+  if (!batches.length) { $("#compare").innerHTML = ""; return; }
+  const rows = batches.map(b => {
+    const o = stats(b.ids), w = wilson(o.maf, o.n), s0 = S.games.get(b.ids[0]).start;
+    const f = (k, n) => n ? pct(k / n) : "–";
+    return `<tr data-batch="${esc(b.id)}" class="${b.id === S.batchSel ? "on" : ""}"><td>${cfgChips(s0)}</td><td>${o.n}/${b.size}</td>
+      <td><b>${w ? pct(w.p) : "–"}</b> ${w ? `<span class="muted">(${pct(w.lo)}–${pct(w.hi)})</span>` : ""}</td>
+      <td>${f(o.vilRight, o.vilVotes)}</td><td>${f(o.bad, o.resp)}</td><td>${o.worded ? f(o.detNames, o.worded) : "n/a"}</td><td>${o.worded ? f(o.copies, o.speeches) : "n/a"}</td><td>${o.worded ? f(o.confess, o.worded) : "n/a"}</td>
+      <td>${o.n ? (o.wall / o.n).toFixed(1) + " s" : "–"}</td><td>${o.n ? Math.round(o.tok / o.n) : "–"}</td></tr>`;
+  });
+  $("#compare").innerHTML = `<tr><th>Batch</th><th>Games</th><th>Mafia wins (95% CI)</th><th>Villager votes mafioso</th><th>Unparsed</th><th>Detective names mafioso</th><th>Copied lines</th><th>Mafioso gives itself away</th><th>s / game</th><th>tokens / game</th></tr>${rows.join("")}`;
+}
+
+// ---------------------------------------------------------------- playback
+function speedFactor() { return S.speed === "max" ? 25 : Number(S.speed); }
+function dwell(ev, wasLive) {
+  const f = speedFactor();
+  const typeMs = ev.type === "speech" && !wasLive && ev.parsed_ok !== false ? (ev.text.length / 38) * 1000 : 0;
+  const base = { start: 1000, night: 2600, speech: 2200 + typeMs, vote: 1200, result: 6500 }[ev.type] || 800;
+  return S.speed === "max" ? Math.max(ev.type === "result" ? 2500 : 120, base / f) : base / f;
+}
+
+function current() { const g = S.games.get(S.view.gid); return g ? fold(g.events, S.view.idx) : fold([], 0); }
+
+function step() {
+  const g = S.games.get(S.view.gid);
+  if (!g || S.view.idx >= g.events.length) return false;
+  const ev = g.events[S.view.idx++];
+  const wasLive = !!(S.liveShow && S.liveShow.gid === ev.game_id && S.liveShow.speaker === ev.speaker && ev.type === "speech");
+  S.liveShow = null;
+  render(fold(g.events, S.view.idx), { animate: !wasLive && S.speed !== "max" });
+  S.nextAt = performance.now() + dwell(ev, wasLive);
+  return true;
+}
+
+function setView(gid, idx) {
+  S.view = { gid, idx: 0 };
+  S.liveShow = null;
+  S.nextAt = 0;
+  const g = S.games.get(gid);
+  if (g && idx > 0) { S.view.idx = Math.min(idx, g.events.length); }
+  render(current(), {});
+  $("#btnLive").hidden = S.follow;
+}
+
+function caughtUp() {
+  const g = S.games.get(S.view.gid);
+  return g && S.view.idx >= g.events.length && performance.now() >= S.nextAt;
+}
+
+function maybeShowLive() {
+  const L = S.liveGen;
+  if (!L || S.paused || L.gid !== S.view.gid || !caughtUp()) return;
+  S.liveShow = L;
+  const st = current();
+  renderSeats(st, { live: L });
+  renderCenter(st, { live: L });
+}
+
+function maybeFollow() {
+  if (!S.follow || !S.order.length) return;
+  const latest = S.order[S.order.length - 1];
+  if (latest === S.view.gid) return;
+  const g = S.games.get(S.view.gid);
+  const finished = !g || (g.result && caughtUp());
+  if (S.jumpNext || finished) { S.jumpNext = false; S.bannerOff.add(S.view.gid); setView(latest, 0); }
+}
+
+let lastT = performance.now();
+function tick(t) {
+  const dt = t - lastT; lastT = t;
+  if (!S.still) {
+    const g = S.games.get(S.view.gid);
+    if (g && !S.paused && S.view.idx < g.events.length && t >= S.nextAt) step();
+    else if (S.liveGen && !S.liveShow) maybeShowLive();
+    if (!S.paused) maybeFollow();
+    if (S.typing && !S.paused) {
+      const T = S.typing;
+      T.shown = Math.min(T.text.length, T.shown + dt * 0.038 * speedFactor());
+      T.el.textContent = T.text.slice(0, Math.floor(T.shown));
+      if (T.shown >= T.text.length) S.typing = null;
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+// ---------------------------------------------------------------- status
+let cfgSynced = false;
+function onStatus(st) {
+  S.status = st;
+  if (!cfgSynced && st.default_config) {
+    $("#promptSel").value = st.default_config.prompt; $("#thinkSel").checked = st.default_config.thinking;
+    $("#budgetSel").value = String(st.default_config.think_budget); $("#samplingSel").value = st.default_config.sampling;
+    $("#translationSel").value = st.default_config.latent_translation || "identity"; cfgSynced = true;
+  }
+  const m = st.model, gpu = st.gpu;
+  $("#sub").textContent = st.mock ? "MOCK MODE · scripted lines, no model" :
+    m ? `${m.name} · n_ctx ${m.n_ctx} · all ${m.n_layers} layers on GPU` : `Qwen3-4B · ${st.state}`;
+  const v = $("#vram");
+  if (st.mock) { v.className = "vram"; v.innerHTML = `VRAM <b>–</b><br>mock: no model loaded`; }
+  else if (gpu && gpu.ok) {
+    const mine = gpu.proc_gib != null ? gpu.proc_peak_gib : gpu.peak_gib;
+    v.className = "vram " + (gpu.problem ? "badv" : mine > gpu.budget_gib * 0.9 ? "warn" : "good");
+    const sh = gpu.shared_mib == null ? "" : ` · spill ${Math.max(0, gpu.shared_mib - (gpu.shared_baseline_mib || 0))} MiB`;
+    v.innerHTML = `VRAM peak <b>${mine.toFixed(2)} GiB</b> / ${gpu.budget_gib} budget<br>whole GPU now ${gpu.used_gib.toFixed(2)} of ${gpu.total_gib.toFixed(1)} GiB${sh}`;
+    v.title = `Peak = this app's own dedicated VRAM (the budget applies to it). Whole GPU = every program on the GPU (NVML), before model load ${gpu.baseline_gib} GiB, peak ${gpu.peak_gib} GiB. Spill = this app's memory moved to system RAM since the model loaded.`;
+  } else v.textContent = "VRAM n/a";
+  const a = $("#alert");
+  a.hidden = !st.error;
+  if (st.error) a.textContent = "Stopped: " + st.error;
+  const r = st.running;
+  const q = st.queued || { games: 0, batches: 0 };
+  $("#btnStop").hidden = !(r && r.batch_id) && !q.batches;
+  const now = r ? (r.batch_id ? `Playing game ${r.index} of ${r.size} (${cfgLabel(r.config)})` : `Playing a single game (${cfgLabel(r.config)})`) : (st.state === "ready" ? "Idle" : st.state);
+  const next = [q.games ? `${q.games} single game${q.games > 1 ? "s" : ""} (run next)` : "", q.batches ? `${q.batches} batch${q.batches > 1 ? "es" : ""}` : ""].filter(Boolean).join(", ");
+  $("#queue").textContent = now + (next ? ` · queued: ${next}` : "");
+  $("#btnBatch").disabled = $("#btnNew").disabled = st.state === "loading model" || !!st.error;
+  renderPhase(current());
+}
+
+// ---------------------------------------------------------------- wiring
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  return r.json();
+}
+S.channel = "T";
+document.querySelectorAll(".chan[data-ch]").forEach(b => b.onclick = () => {
+  S.channel = b.dataset.ch;
+  document.querySelectorAll(".chan[data-ch]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", x === b); });
+  $("#thinkSel").disabled = S.channel !== "T";  // latent channels: the latent steps are the thinking
+});
+const gameCfg = () => ({ channel: S.channel, prompt: $("#promptSel").value, thinking: S.channel === "T" && $("#thinkSel").checked,
+  think_budget: Number($("#budgetSel").value), sampling: $("#samplingSel").value,
+  latent_translation: $("#translationSel").value });
+$("#btnNew").onclick = () => { S.follow = true; S.jumpNext = true; S.paused = false; syncPause(); $("#btnLive").hidden = true; post("/api/game", gameCfg()); };
+$("#btnBatch").onclick = () => { S.follow = true; S.jumpNext = true; S.paused = false; S.batchSel = null; syncPause(); $("#btnLive").hidden = true; post("/api/batch", { n: 30, ...gameCfg() }); };
+$("#btnStop").onclick = () => post("/api/stop");
+$("#btnPause").onclick = () => { S.paused = !S.paused; syncPause(); };
+$("#btnStep").onclick = () => {
+  if (S.typing) { S.typing.el.textContent = S.typing.text; S.typing = null; }
+  step();
+};
+$("#btnLive").onclick = () => {
+  S.follow = true; $("#btnLive").hidden = true;
+  const latest = S.order[S.order.length - 1];
+  if (latest) { const g = S.games.get(latest); setView(latest, g.result ? g.events.length : 0); }
+};
+$("#speed").onchange = e => { S.speed = e.target.value; };
+$("#hide").onchange = e => { S.hide = e.target.checked; render(current(), {}); };
+$("#batchSel").onchange = e => { S.batchSel = e.target.value; renderResults(); };
+$("#banner").onclick = () => { S.bannerOff.add(S.view.gid); $("#banner").hidden = true; };
+function replay(gid) { S.follow = false; S.paused = false; syncPause(); S.bannerOff.delete(gid); setView(gid, 0); }
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-gid]");
+  if (t) replay(t.dataset.gid);
+  const b = e.target.closest("[data-batch]");
+  if (b) { S.batchSel = b.dataset.batch; renderResults(); }
+});
+function syncPause() { $("#btnPause").textContent = S.paused ? "Resume" : "Pause"; }
+window.addEventListener("resize", placeBanner);
+window.addEventListener("scroll", placeBanner, { passive: true });
+
+(function stars() {
+  const box = $("#stars"), html = [];
+  for (let i = 0; i < 70; i++) {
+    const s = (Math.random() * 3 + 1.5).toFixed(1);
+    html.push(`<i style="left:${(Math.random() * 100).toFixed(1)}%;top:${(Math.random() * 100).toFixed(1)}%;width:${s}px;height:${s}px;animation-delay:${(Math.random() * 3).toFixed(2)}s"></i>`);
+  }
+  box.innerHTML = html.join("");
+})();
+
+async function boot() {
+  if (params.get("hide") === "1") { S.hide = true; $("#hide").checked = true; }
+  if (params.get("speed")) { S.speed = params.get("speed"); $("#speed").value = S.speed; }
+  try { onStatus(await (await fetch("/api/status")).json()); } catch (e) {}
+  const evs = await (await fetch("/api/events")).json();
+  evs.forEach(ingest);
+  const want = params.get("game");
+  if (want && S.games.has(want)) {
+    S.follow = false;
+    if (params.get("batch")) S.batchSel = params.get("batch");
+    const g = S.games.get(want);
+    const n = params.has("step") ? Number(params.get("step")) : g.events.length;
+    if (params.has("step")) { S.paused = true; S.still = true; syncPause(); }
+    setView(want, n);
+    $("#btnLive").hidden = false;
+  } else if (S.order.length) {
+    const latest = S.order[S.order.length - 1], g = S.games.get(latest);
+    S.bannerOff.add(latest);
+    setView(latest, g.result ? g.events.length : 0);
+  } else render(current(), {});
+  if (params.get("nostream") === "1") return;
+  const es = new EventSource("/api/stream");
+  es.onmessage = m => {
+    const d = JSON.parse(m.data);
+    if (d.kind === "hello") { onStatus(d.status); d.current.forEach(ev => { if (ingest(ev)) renderPast(); }); renderResults(); }
+    else if (d.kind === "status") onStatus(d.status);
+    else if (d.kind === "event") {
+      const ev = d.event;
+      if (S.liveGen && S.liveGen.gid === ev.game_id && S.liveGen.speaker === ev.speaker) S.liveGen = null;
+      if (ingest(ev)) {
+        if (ev.type === "start" && ev.batch_id && !S.batchSel) S.batchSel = ev.batch_id;
+        if (ev.type === "start" && ev.batch_id && S.jumpNext) S.batchSel = ev.batch_id;
+        renderPast(); renderResults();
+      }
+    } else if (d.kind === "gen_start") { S.liveGen = { gid: d.game_id, speaker: d.speaker, type: d.type, text: "", think: "", thinkN: 0 }; maybeShowLive(); }
+    else if (d.kind === "token") {
+      const L = S.liveGen;
+      if (L && L.gid === d.game_id && L.speaker === d.speaker) {
+        const wasThinking = !L.text && L.thinkN;
+        if (d.phase === "think") { L.think += d.delta; L.thinkN++; } else { L.text += d.delta; if (d.phase === "gloss") L.gloss = true; }
+        if (S.liveShow === L) {
+          const st = current();
+          const el = $("#center .msg");
+          if (L.type === "speech" && L.text && !wasThinking && el && liveParts(L).hasSay) el.textContent = liveParts(L).say;
+          else if (L.type === "speech" || (!L.text && L.thinkN) || isPrivateSay(L)) { renderSeats(st, { live: L }); renderCenter(st, { live: L }); }
+        }
+      }
+    }
+  };
+}
+boot().then(() => requestAnimationFrame(tick));
+</script>
+</body>
+</html>

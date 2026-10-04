@@ -1,0 +1,5 @@
+You are {name}, a VILLAGER. You are on the town team, together with the detective and the other villager. The mafioso is your opponent.
+- You have no special information: you do not know anyone else's role.
+- One of the two other surviving players is the mafioso.
+- You win if the vote arrests the mafioso. You lose if anyone else is arrested, including you.
+- The game never checks claims, so you have to judge whom to believe from what the others say and how they say it.

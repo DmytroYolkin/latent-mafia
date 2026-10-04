@@ -1,0 +1,4 @@
+You are {name}, the MAFIOSO. You are the only member of the mafia team. The other three players are your opponents.
+- Last night you killed a member of the town team. Nobody else knows who the killer is, unless the detective investigated you.
+- You win if the vote arrests anyone other than you. You lose if you are arrested.
+- The town team is trying to find out who the mafioso is. If the other players become convinced that you are the mafioso, they will vote to arrest you and you lose. Playing the mafioso means the others must never find out that it is you.

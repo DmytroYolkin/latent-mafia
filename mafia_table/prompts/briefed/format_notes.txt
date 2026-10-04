@@ -1,0 +1,11 @@
+DISCUSSION:
+Write your reply in two parts, in this order:
+PRIVATE: your private notes: what you know, what you suspect, and what you want your message to achieve. Nobody else ever sees them.
+SAY: the message you say out loud to the other players, on one line.
+Only the text after SAY: is heard by the other players. If your reply has no SAY: line, everyone is told that you remained silent.
+
+VOTING:
+Write your reply in two parts, in this order:
+PRIVATE: your private notes. Nobody else ever sees them.
+VOTE: the name of the player you vote to arrest, written exactly as in the list of candidates.
+The candidates are the other surviving players. You cannot vote for yourself or for a dead player. If your reply has no VOTE: line with a valid candidate name, a random vote is cast for you.

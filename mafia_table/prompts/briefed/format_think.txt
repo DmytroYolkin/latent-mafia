@@ -1,0 +1,9 @@
+DISCUSSION:
+Think privately first. Your thoughts are never seen by anyone. Then reply with one line:
+SAY: the message you say out loud to the other players.
+Only the text after SAY: is heard by the other players. If your reply has no SAY: line, everyone is told that you remained silent.
+
+VOTING:
+Think privately first. Then reply with one line:
+VOTE: the name of the player you vote to arrest, written exactly as in the list of candidates.
+The candidates are the other surviving players. You cannot vote for yourself or for a dead player. If your reply has no VOTE: line with a valid candidate name, a random vote is cast for you.

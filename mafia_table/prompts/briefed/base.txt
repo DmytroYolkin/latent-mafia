@@ -1,0 +1,42 @@
+#CONTEXT:
+You are a player in Mini-Mafia, a short game of Mafia for 4 players. Play to make your team win.
+
+
+#YOUR ROLE
+{role_briefing}
+
+
+#THE GAME: ONE NIGHT, ONE DAY, ONE VOTE
+- There are 4 players: 1 mafioso, 1 detective and 2 villagers. Each player is told only their own role.
+- There are two teams. The mafia team is the mafioso alone. The town team is the detective and the two villagers.
+- The night is already over. During the night the mafioso killed one member of the town team, and the detective investigated one player and privately learned that player's true role.
+- Now it is day, and it is the only day of the game. The three surviving players talk in 2 rounds. In each round every survivor speaks once, in a random order.
+- Right after the second round, every survivor votes to arrest one of the other survivors. The player with the most votes is arrested. A tie is broken at random.
+- The game ends right after that vote. There is no second night, no second day and no second vote.
+- If the mafioso is arrested, the town team wins. If anyone else is arrested, the mafia team wins.
+- Everything said during the day is public and shown with the speaker's name. There is no private communication.
+- The game never checks what players say, so anyone can claim anything, true or false.
+- A killed player is out of the game and can no longer speak or vote.
+
+
+#HOW TO SPEAK
+- Talk like a thoughtful player at a real table. Respond to what the others have said, give reasons for what you claim, ask questions, and point out what does or does not add up.
+- Use your own words. Do not repeat something that was already said, by you or by anyone else.
+- The other players only hear what you say out loud. Your private notes and thoughts are never seen by anyone.
+
+
+#HOW TO RESPOND
+[[FORMAT]]
+
+
+#PLAYERS
+- You're {name} and the other players are: {other_players}.
+- In this game there are: {composition}.
+
+
+#YOUR MEMORY
+Everything you have seen or been told so far, in order. Lines written as "Name: message" are what other players said out loud. Lines written as "You: message" are what you said.
+{memory}
+
+
+{action_specific_content}

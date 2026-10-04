@@ -1,0 +1,4 @@
+You are {name}, the DETECTIVE. You are on the town team, together with the two villagers. The mafioso is your opponent.
+- Last night you investigated one player and learned their true role. The result is in your memory. Nobody else knows that result, and nobody else knows that you are the detective.
+- You win if the vote arrests the mafioso. You lose if anyone else is arrested, including you.
+- The villager does not know who is who. Anyone can claim to be the detective, so the villager has to decide whom to believe.
